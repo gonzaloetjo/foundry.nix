@@ -1,0 +1,30 @@
+name: Monitor Grafana
+
+on:
+  schedule:
+    - cron: '0 * * * *'  # Runs every hour
+
+jobs:
+  monitor:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check Grafana endpoint
+        run: |
+          if curl -sSf https://grafana.ash-test.center/ >/dev/null; then
+            echo "Grafana is up"
+          else
+            echo "Grafana is down"
+            exit 1
+          fi
+
+      - name: Record status to GitHub Issues
+        if: ${{ failure() }}
+        run: |
+          echo "::set-output name=title::Grafana is down"
+          echo "::set-output name=body::Grafana is down at $(date)"
+          echo "::set-output name=labels::status,monitoring"
+
+          curl -X POST \
+            -H "Authorization: token ${{ secrets.GH_PAT }}" \
+            -d '{"title":"Grafana is down","body":"Grafana is down at $(date)","labels":["status","monitoring"]}' \
+            https://api.github.com/repos/your-github-username/your-repo-name/issues
